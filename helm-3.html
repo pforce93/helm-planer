@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d0d14">
+<title>Helm — Twój planer życia</title>
+<style>
+:root {
+  --bg:#0d0d14; --surface:#14141f; --card:#1a1a28; --border:#2a2a3d;
+  --accent:#7c6aff; --accent2:#ff6a8a; --energy:#4fffb0; --warn:#ffb347;
+  --text:#e8e8f0; --muted:#6b6b88; --r:13px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100dvh;}
+
+/* SCREENS */
+.screen{display:none;flex-direction:column;height:100dvh;overflow:hidden;}
+.screen.active{display:flex;}
+
+/* SPLASH */
+#splash{align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 30% 20%,#1a1040 0%,var(--bg) 60%);}
+.logo-word{font-size:3rem;font-weight:700;letter-spacing:-2px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-top:16px;}
+.logo-sub{color:var(--muted);font-size:.78rem;margin-top:4px;letter-spacing:.1em;text-transform:uppercase;}
+.pulse-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);margin-top:28px;
+  animation:pulse 1.4s ease-in-out infinite;}
+
+/* CHAT */
+#onboarding{background:var(--bg);}
+.chat-header{background:var(--surface);border-bottom:1px solid var(--border);
+  padding:.85rem 1rem;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.chat-header-text .title{font-weight:600;font-size:.92rem;}
+.chat-header-text .phase{font-size:.7rem;color:var(--muted);}
+.progress-bar-wrap{height:2px;background:var(--border);flex-shrink:0;}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .6s;}
+.chat-messages{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:10px;}
+.msg-ai{max-width:88%;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r) var(--r) var(--r) 4px;padding:.75rem 1rem;
+  font-size:.88rem;line-height:1.55;align-self:flex-start;animation:fadeUp .2s ease;}
+.msg-ai .sender{font-size:.63rem;color:var(--accent);font-weight:700;margin-bottom:4px;letter-spacing:.05em;}
+.msg-user{max-width:88%;background:linear-gradient(135deg,#2a1f5e,#1f1a3d);
+  border:1px solid var(--accent);border-radius:var(--r) var(--r) 4px var(--r);
+  padding:.75rem 1rem;font-size:.88rem;line-height:1.55;align-self:flex-end;color:#d0ccff;
+  animation:fadeUp .2s ease;}
+.typing{display:flex;gap:4px;align-items:center;align-self:flex-start;padding:8px 4px;}
+.typing span{width:7px;height:7px;border-radius:50%;background:var(--muted);}
+.typing span:nth-child(1){animation:bounce 1.2s 0ms ease infinite;}
+.typing span:nth-child(2){animation:bounce 1.2s 150ms ease infinite;}
+.typing span:nth-child(3){animation:bounce 1.2s 300ms ease infinite;}
+.quick-replies{display:flex;flex-wrap:wrap;gap:8px;padding:8px 1rem 4px;flex-shrink:0;}
+.qr-btn{background:var(--card);border:1px solid var(--border);color:var(--text);
+  padding:6px 14px;border-radius:20px;font-size:.8rem;cursor:pointer;font-family:inherit;transition:all .15s;}
+.qr-btn:active{border-color:var(--accent);color:var(--accent);}
+.chat-input-area{background:var(--surface);border-top:1px solid var(--border);
+  padding:.75rem 1rem;display:flex;gap:8px;align-items:flex-end;flex-shrink:0;}
+.chat-input{flex:1;background:var(--card);border:1px solid var(--border);color:var(--text);
+  padding:10px 14px;border-radius:22px;font-family:inherit;font-size:.88rem;
+  resize:none;max-height:100px;outline:none;line-height:1.4;}
+.send-btn{width:40px;height:40px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;color:white;cursor:pointer;font-size:1.1rem;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;}
+
+/* PLAN */
+#plan{background:var(--bg);}
+.plan-header{background:var(--surface);border-bottom:1px solid var(--border);padding:1rem;flex-shrink:0;}
+.plan-header-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.plan-day-title{font-weight:700;font-size:1.05rem;}
+.plan-day-sub{font-size:.72rem;color:var(--muted);}
+.energy-wrap{background:var(--card);border-radius:10px;padding:.65rem .9rem;border:1px solid var(--border);}
+.energy-label-row{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-bottom:6px;}
+.energy-val-big{font-weight:700;font-family:monospace;font-size:.8rem;}
+.energy-track{height:8px;background:var(--border);border-radius:4px;overflow:hidden;}
+.energy-fill{height:100%;border-radius:4px;transition:width .5s,background .4s;}
+.day-tabs{display:flex;gap:6px;overflow-x:auto;padding:.7rem 1rem .3rem;
+  scrollbar-width:none;flex-shrink:0;}
+.day-tabs::-webkit-scrollbar{display:none;}
+.day-tab{flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:.75rem;font-weight:500;
+  cursor:pointer;font-family:inherit;border:1px solid var(--border);
+  background:var(--card);color:var(--muted);transition:all .15s;}
+.day-tab.active{background:var(--accent);border-color:var(--accent);color:white;}
+.timeline{flex:1;overflow-y:auto;padding:.8rem 1rem 5rem;}
+.tl-item{display:flex;gap:10px;margin-bottom:6px;}
+.tl-time{width:44px;flex-shrink:0;font-family:monospace;font-size:.68rem;color:var(--muted);padding-top:14px;text-align:right;}
+.tl-line{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+.tl-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--accent);background:var(--bg);margin-top:14px;flex-shrink:0;}
+.tl-dot.low{border-color:var(--accent2);}
+.tl-connector{flex:1;width:2px;background:var(--border);min-height:10px;}
+.tl-card{flex:1;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.65rem .85rem;}
+.tl-card-top{display:flex;justify-content:space-between;align-items:flex-start;}
+.tl-name{font-weight:600;font-size:.85rem;}
+.tl-dur{font-family:monospace;font-size:.68rem;color:var(--muted);flex-shrink:0;margin-left:6px;}
+.tl-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.tag{font-size:.65rem;padding:2px 7px;border-radius:10px;font-weight:500;}
+.tag-e{color:var(--energy);background:#0d2a1f;border:1px solid #1a4a35;}
+.tag-t{color:#a09aff;background:#1f1a3d;border:1px solid #3d2f7a;}
+.tag-r{color:#d08aff;background:#2a1a2a;border:1px solid #5a2a6a;}
+.tag-w{color:var(--warn);background:#2a1a00;border:1px solid #5a3a00;}
+.mini-e-row{display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);}
+.mini-e-label{font-size:.68rem;color:var(--muted);white-space:nowrap;}
+.mini-e-track{flex:1;height:4px;background:var(--border);border-radius:2px;}
+.mini-e-fill{height:100%;border-radius:2px;transition:width .5s;}
+.mini-e-val{font-family:monospace;font-size:.68rem;font-weight:600;min-width:24px;text-align:right;}
+.tl-notes{font-size:.68rem;color:var(--muted);margin-top:4px;}
+.empty-day{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:60%;color:var(--muted);text-align:center;gap:12px;}
+.empty-icon{font-size:2.5rem;opacity:.4;}
+.fab{position:fixed;bottom:24px;right:20px;width:54px;height:54px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;color:white;font-size:1.6rem;cursor:pointer;
+  box-shadow:0 4px 20px #7c6aff44;display:flex;align-items:center;justify-content:center;z-index:20;}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:#00000099;z-index:40;
+  align-items:flex-end;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:20px 20px 0 0;
+  padding:1.2rem 1rem 2rem;width:100%;max-width:480px;
+  border:1px solid var(--border);border-bottom:none;
+  max-height:90dvh;overflow-y:auto;animation:slideUp .25s ease;}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 1rem;}
+.modal-title{font-weight:600;font-size:1rem;margin-bottom:12px;}
+.form-label{font-size:.72rem;color:var(--muted);margin-bottom:4px;display:block;}
+.form-input{width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);
+  padding:.6rem .8rem;border-radius:10px;font-family:inherit;font-size:.88rem;
+  outline:none;margin-bottom:10px;display:block;}
+.form-input:focus{border-color:var(--accent);}
+.form-row{display:flex;gap:8px;}
+.form-row>div{flex:1;}
+.energy-slider{width:100%;accent-color:var(--energy);margin-bottom:4px;cursor:pointer;}
+.energy-row{display:flex;justify-content:space-between;font-size:.68rem;color:var(--muted);margin-bottom:8px;}
+.ai-result{background:var(--card);border-radius:10px;padding:.7rem .9rem;
+  margin-top:8px;font-size:.8rem;line-height:1.5;display:none;}
+.ai-result.visible{display:block;}
+.ai-result-row{display:flex;gap:6px;align-items:flex-start;}
+.ai-warn{margin-top:6px;color:var(--warn);font-size:.75rem;}
+.ai-tip{margin-top:6px;color:var(--accent);font-size:.75rem;}
+.btn{width:100%;padding:.7rem;border-radius:12px;border:none;color:white;
+  font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;margin-top:8px;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));}
+.btn-green{background:linear-gradient(135deg,#1a5e2a,#2a8a44);}
+.btn-red{background:linear-gradient(135deg,#3a1a2a,#5a2a3a);}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:.85rem;}
+
+/* API KEY SCREEN */
+#apikey{align-items:center;justify-content:center;padding:2rem;
+  background:radial-gradient(ellipse at 30% 20%,#1a1040 0%,var(--bg) 60%);}
+.apikey-box{width:100%;max-width:400px;text-align:center;}
+.apikey-logo{font-size:2.2rem;font-weight:700;letter-spacing:-2px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px;}
+.apikey-sub{color:var(--muted);font-size:.8rem;margin-bottom:2rem;line-height:1.5;}
+.apikey-input{width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);
+  padding:.8rem 1rem;border-radius:12px;font-family:monospace;font-size:.85rem;
+  outline:none;margin-bottom:10px;text-align:center;}
+.apikey-input:focus{border-color:var(--accent);}
+.apikey-hint{font-size:.72rem;color:var(--muted);margin-bottom:1.2rem;line-height:1.5;}
+.apikey-hint a{color:var(--accent);}
+.apikey-btn{width:100%;padding:.75rem;border-radius:12px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;color:white;font-family:inherit;font-size:.95rem;font-weight:600;cursor:pointer;}
+/* SETTINGS BTN */
+.settings-btn{position:absolute;top:12px;right:12px;width:34px;height:34px;
+  border-radius:50%;background:var(--card);border:1px solid var(--border);
+  color:var(--muted);font-size:1rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;z-index:5;}
+.settings-btn:active{border-color:var(--accent);color:var(--accent);}
+/* SVG WHEEL */
+@keyframes wheelSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:.2;transform:scale(1)}50%{opacity:1;transform:scale(2)}}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.spin{animation:wheelSpin 16s linear infinite;}
+.spin-fast{animation:wheelSpin 10s linear infinite;}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+select option{background:var(--card);}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div class="screen active" id="splash">
+  <svg class="spin" width="108" height="108" viewBox="0 0 108 108" style="filter:drop-shadow(0 0 20px #7c6aff77)">
+    <defs><linearGradient id="wg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c6aff"/><stop offset="100%" stop-color="#ff6a8a"/>
+    </linearGradient></defs>
+    <circle cx="54" cy="54" r="44" fill="none" stroke="url(#wg)" stroke-width="5.6"/>
+    <circle cx="54" cy="54" r="14" fill="#0d0d14" stroke="url(#wg)" stroke-width="3.5"/>
+    <circle cx="54" cy="54" r="5.3" fill="url(#wg)"/>
+    <g id="spokes"></g>
+  </svg>
+  <div class="logo-word">helm</div>
+  <div class="logo-sub">Trzymaj stery swojego dnia</div>
+  <div class="pulse-dot"></div>
+</div>
+
+<!-- API KEY -->
+<div class="screen" id="apikey">
+  <div class="apikey-box">
+    <div class="apikey-logo">helm</div>
+    <div class="apikey-sub">Aby aplikacja działała, potrzebuje klucza Gemini API.<br>Jest darmowy i zapisuje się tylko na Twoim telefonie.</div>
+    <input class="apikey-input" id="apikeyInput" type="password" placeholder="Wklej klucz API...">
+    <div class="apikey-hint">
+      Pobierz klucz na <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a><br>
+      → Menu ☰ → API keys → Create API key
+    </div>
+    <button class="apikey-btn" id="apikeyBtn">Zapisz i uruchom Helm ⚓</button>
+  </div>
+</div>
+
+<!-- ONBOARDING -->
+<div class="screen" id="onboarding">
+  <div class="chat-header">
+    <svg class="spin-fast" width="34" height="34" viewBox="0 0 108 108" style="filter:drop-shadow(0 0 8px #7c6aff88);flex-shrink:0">
+      <defs><linearGradient id="wg2" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#7c6aff"/><stop offset="100%" stop-color="#ff6a8a"/>
+      </linearGradient></defs>
+      <circle cx="54" cy="54" r="44" fill="none" stroke="url(#wg2)" stroke-width="5.6"/>
+      <circle cx="54" cy="54" r="14" fill="#0d0d14" stroke="url(#wg2)" stroke-width="3.5"/>
+      <circle cx="54" cy="54" r="5.3" fill="url(#wg2)"/>
+      <g id="spokes2"></g>
+    </svg>
+    <div class="chat-header-text">
+      <div class="title">Helm — konfiguracja</div>
+      <div class="phase" id="phaseLabel">Poznajemy Twoje życie</div>
+    </div>
+    <button class="settings-btn" id="settingsBtn" title="Zmień klucz API">⚙️</button>
+  </div>
+  <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar" style="width:5%"></div></div>
+  <div class="chat-messages" id="chatMessages"></div>
+  <div class="quick-replies" id="quickReplies"></div>
+  <div class="chat-input-area">
+    <textarea class="chat-input" id="chatInput" placeholder="Napisz odpowiedź..." rows="1"></textarea>
+    <button class="send-btn" id="sendBtn">➤</button>
+  </div>
+</div>
+
+<!-- PLAN -->
+<div class="screen" id="plan">
+  <div class="plan-header">
+    <div class="plan-header-top">
+      <div>
+        <div class="plan-day-title" id="planTitle">—</div>
+        <div class="plan-day-sub">Tydzień bieżący</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:1.3rem">⚡</span>
+        <button class="settings-btn" id="settingsBtnPlan" title="Zmień klucz API">⚙️</button>
+      </div>
+    </div>
+    <div class="energy-wrap">
+      <div class="energy-label-row">
+        <span>Energia pozostała</span>
+        <span class="energy-val-big" id="energyValBig" style="color:var(--energy)">100 / 100</span>
+      </div>
+      <div class="energy-track"><div class="energy-fill" id="energyFill" style="width:100%;background:var(--energy)"></div></div>
+    </div>
+  </div>
+  <div class="day-tabs" id="dayTabs"></div>
+  <div class="timeline" id="timeline"></div>
+  <button class="fab" id="fabBtn">+</button>
+</div>
+
+<!-- ADD TASK MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">➕ Nowa czynność</div>
+    <label class="form-label">Nazwa</label>
+    <input class="form-input" id="fName" placeholder="np. Siłownia">
+    <div class="form-row">
+      <div><label class="form-label">Czas (min)</label><input class="form-input" id="fDur" type="number" value="60" min="5" max="480"></div>
+      <div><label class="form-label">Godzina startu</label><input class="form-input" id="fTime" type="time" value="10:00"></div>
+    </div>
+    <label class="form-label">Dojazd przed (min)</label>
+    <input class="form-input" id="fTravel" type="number" value="0" min="0" max="120">
+    <label class="form-label">Koszt energii: <span id="eLabel" style="color:var(--energy);font-weight:700">50</span>/100</label>
+    <input class="energy-slider" id="fEnergy" type="range" min="0" max="100" value="50">
+    <div class="energy-row">
+      <span>Brak wysiłku</span>
+      <span id="eAfterLabel" style="font-weight:600">Energia po: —</span>
+      <span>Totalny wysiłek</span>
+    </div>
+    <label class="form-label">Odpoczynek po (min)</label>
+    <input class="form-input" id="fRest" type="number" value="0" min="0" max="120">
+    <label class="form-label">Kategoria</label>
+    <select class="form-input" id="fCat">
+      <option value="work">💼 Praca / nauka</option>
+      <option value="health">🏋️ Zdrowie / sport</option>
+      <option value="hygiene">🚿 Higiena / pielęgnacja</option>
+      <option value="social">👥 Społeczne</option>
+      <option value="chores">🧹 Obowiązki domowe</option>
+      <option value="leisure" selected>🎮 Odpoczynek / rozrywka</option>
+      <option value="food">🍽️ Jedzenie</option>
+      <option value="transport">🚗 Dojazd</option>
+    </select>
+    <label class="form-label">Priorytet</label>
+    <select class="form-input" id="fPrio">
+      <option value="high">🔴 Wysoki — musi się odbyć</option>
+      <option value="mid" selected>🟡 Normalny</option>
+      <option value="low">🟢 Niski — można przesunąć</option>
+    </select>
+    <div class="ai-result" id="aiResult"></div>
+    <button class="btn btn-primary" id="btnCheck">🔍 Sprawdź z AI czy mogę to zaplanować</button>
+    <button class="btn btn-green" id="btnAdd" style="display:none">✅ Dodaj do planu</button>
+    <button class="btn btn-red" id="btnRetry" style="display:none">🔄 Zmień i sprawdź ponownie</button>
+    <button class="btn btn-ghost" id="btnCancel">Anuluj</button>
+  </div>
+</div>
+
+<script>
+// ══ CONSTANTS ══
+const CAT_ICON={work:"💼",health:"🏋️",hygiene:"🚿",social:"👥",chores:"🧹",leisure:"🎮",food:"🍽️",transport:"🚗"};
+const TIME_MAP={morning:"07:00",afternoon:"13:00",evening:"19:00",flexible:"10:00"};
+const DAY_PL=["Niedz","Pon","Wt","Śr","Czw","Pt","Sob"];
+const DAY_FULL=["Niedziela","Poniedziałek","Wtorek","Środa","Czwartek","Piątek","Sobota"];
+const MONTH_PL=["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
+const DAY_EN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+// ══ GEMINI ══
+// Klucz API przechowywany lokalnie w przeglądarce — nigdy w kodzie
+function getGeminiKey() { return localStorage.getItem("helm_gemini_key")||""; }
+function setGeminiKey(k) { localStorage.setItem("helm_gemini_key", k); }
+// URL built per model in callGeminiModel()
+
+// Try multiple model names in order
+const GEMINI_MODELS=["gemini-2.0-flash","gemini-1.5-flash","gemini-flash-latest","gemini-1.5-flash-latest"];
+
+async function callGeminiModel(model, msgs) {
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${getGeminiKey()}`;
+  const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({contents:msgs,generationConfig:{maxOutputTokens:1000,temperature:0.7}})});
+  return await r.json();
+}
+
+async function askGemini(system, history) {
+  const msgs=[];
+  if(system){
+    msgs.push({role:"user",parts:[{text:"[SYSTEM]\n"+system}]});
+    msgs.push({role:"model",parts:[{text:"Rozumiem, jestem gotowy."}]});
+  }
+  history.forEach(m=>{
+    msgs.push({role:m.role==="assistant"?"model":"user",parts:[{text:m.content}]});
+  });
+  
+  // Try each model until one works
+  let lastError="";
+  for(const model of GEMINI_MODELS){
+    try{
+      const d=await callGeminiModel(model, msgs);
+      if(d.error){
+        console.warn(`Model ${model} error:`, d.error.code, d.error.message);
+        lastError=d.error.message;
+        // 404 = model not found, try next; other errors = stop
+        if(d.error.code!==404 && !d.error.message.includes("not found") && !d.error.message.includes("deprecated")){
+          if(d.error.code===403||d.error.message.includes("API_KEY")){
+            return "__ERROR__:Błąd klucza API — odśwież stronę i wpisz klucz ponownie.";
+          }
+          return "__ERROR__:"+d.error.message;
+        }
+        continue;
+      }
+      if(d.candidates?.[0]?.finishReason==="SAFETY") return "__SAFETY__";
+      const text=d.candidates?.[0]?.content?.parts?.[0]?.text;
+      if(text){ console.log("Used model:", model); return text; }
+    }catch(e){
+      console.warn(`Model ${model} fetch error:`, e);
+      lastError=e.message;
+    }
+  }
+  return "__ERROR__:Żaden model Gemini nie odpowiada. "+lastError;
+}
+
+// ══ HELPERS ══
+function toMin(t){const[h,m]=t.split(":").map(Number);return h*60+m;}
+function fromMin(m){const h=Math.floor(m/60)%24,mn=m%60;return String(h).padStart(2,"0")+":"+String(mn).padStart(2,"0");}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function getWeekDays(){const out=[],now=new Date();for(let i=0;i<7;i++){const d=new Date(now);d.setDate(now.getDate()+i);out.push(d.toISOString().split("T")[0]);}return out;}
+function dayShort(ds){const d=new Date(ds+"T00:00:00");return DAY_PL[d.getDay()]+" "+d.getDate();}
+function dayFull(ds){const d=new Date(ds+"T00:00:00");return DAY_FULL[d.getDay()]+", "+d.getDate()+" "+MONTH_PL[d.getMonth()];}
+function calcRem(tasks){let e=100;tasks.forEach(t=>{e=Math.max(0,e-(t.energyCost||0));});return e;}
+function energyColor(v){return v<20?"#ff6a8a":v<40?"#ffb347":"#4fffb0";}
+function uid(){return Math.random().toString(36).substr(2,9);}
+
+// ══ DRAW WHEEL SPOKES ══
+function drawSpokes(gId){
+  const g=document.getElementById(gId);
+  if(!g)return;
+  const cx=54,cy=54,outerR=44,innerR=14,handleLen=12,spokeW=4.1,handleW=5.9,ringW=5.6;
+  let html="";
+  for(let i=0;i<8;i++){
+    const angle=(i/8)*Math.PI*2-Math.PI/2;
+    const cos=Math.cos(angle),sin=Math.sin(angle);
+    const sx1=cx+cos*innerR,sy1=cy+sin*innerR;
+    const sx2=cx+cos*(outerR-ringW/2),sy2=cy+sin*(outerR-ringW/2);
+    const hx1=cx+cos*(outerR+ringW/2),hy1=cy+sin*(outerR+ringW/2);
+    const hx2=cx+cos*(outerR+ringW/2+handleLen),hy2=cy+sin*(outerR+ringW/2+handleLen);
+    html+=`<line x1="${sx1}" y1="${sy1}" x2="${sx2}" y2="${sy2}" stroke="url(#wg)" stroke-width="${spokeW}" stroke-linecap="round"/>`;
+    html+=`<line x1="${hx1}" y1="${hy1}" x2="${hx2}" y2="${hy2}" stroke="url(#wg)" stroke-width="${handleW}" stroke-linecap="round"/>`;
+    html+=`<circle cx="${hx2}" cy="${hy2}" r="${handleW*0.85}" fill="url(#wg)"/>`;
+  }
+  g.innerHTML=html;
+}
+
+// ══ STATE ══
+const state={days:{},selectedDay:null};
+
+// ══ SCREENS ══
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+// ══ ONBOARDING ══
+const SYSTEM=`Jesteś Helm — inteligentnym asystentem do planowania życia. Prowadzisz rozmowę z użytkownikiem żeby poznać jego życie i ułożyć optymalny plan tygodnia.
+
+ZASADY ROZMOWY:
+- Czytaj uważnie każdą odpowiedź i reaguj na jej treść
+- Jeśli użytkownik poda informacje których nie pytałeś — zapisz je i nie pytaj ponownie
+- Jeśli odpowiedź jest niejasna — zapytaj o wyjaśnienie
+- Jeśli użytkownik jest zdezorientowany — wyjaśnij co chcesz wiedzieć i dlaczego
+- Dostosuj pytania do tego co już wiesz
+- Nie pytaj o rzeczy które już zostały powiedziane
+
+TEMATY DO ZEBRANIA (elastycznie, nie sztywno):
+1. Praca/nauka: czy pracuje, gdzie, kiedy, jak długo, dojazd
+2. Pobudka i rytm dnia: godziny wstawania, chronotyp
+3. Poranna rutyna: kolejność czynności, czas, prysznic, golenie, pielęgnacja
+4. Jedzenie: ile posiłków, gotowanie, gdzie je
+5. Sport i aktywność fizyczna: co, jak często, kiedy, dojazd
+6. Sprzątanie i obowiązki domowe
+7. Życie społeczne i zobowiązania cykliczne
+8. Hobby i odpoczynek
+9. Wieczór i sen: godziny, rutyna
+
+WAŻNE szczegóły do wyłapania:
+- Kolejność porannych czynności (np. najpierw jedzenie potem prysznic)
+- Bufory po jedzeniu przed wysiłkiem
+- Golenie: co ile dni, ile trwa
+- Prysznic: rano, wieczorem, po treningu
+
+KIEDY KOŃCZYĆ:
+Gdy masz wystarczająco dużo info o wszystkich obszarach, dopisz na samym końcu: [ONBOARDING_DONE]
+
+FORMAT:
+- Krótkie wiadomości, max 3-4 zdania
+- Jedno konkretne pytanie na końcu
+- Możesz zaproponować opcje: [OPCJE: opcja1 | opcja2 | opcja3]
+- Naturalny, ciepły ton
+- Język: polski`;
+
+let chatHistory=[];
+let chatBlocked=false;
+
+function addAIBubble(text){
+  const el=document.createElement("div");
+  el.className="msg-ai";
+  el.innerHTML=`<div class="sender">HELM</div>${text.replace(/\n/g,"<br>")}`;
+  document.getElementById("chatMessages").appendChild(el);
+  el.scrollIntoView({behavior:"smooth",block:"end"});
+}
+
+function addUserBubble(text){
+  const el=document.createElement("div");
+  el.className="msg-user";
+  el.textContent=text;
+  document.getElementById("chatMessages").appendChild(el);
+  el.scrollIntoView({behavior:"smooth",block:"end"});
+}
+
+function showTyping(){
+  const el=document.createElement("div");
+  el.className="typing";el.id="typingIndicator";
+  el.innerHTML="<span></span><span></span><span></span>";
+  document.getElementById("chatMessages").appendChild(el);
+  el.scrollIntoView({behavior:"smooth",block:"end"});
+}
+function hideTyping(){document.getElementById("typingIndicator")?.remove();}
+
+function setQuickReplies(options){
+  const c=document.getElementById("quickReplies");
+  c.innerHTML="";
+  options.forEach(o=>{
+    const b=document.createElement("button");
+    b.className="qr-btn";b.textContent=o;
+    b.onclick=()=>handleUserInput(o);
+    c.appendChild(b);
+  });
+}
+
+function parseResponse(raw){
+  const optMatch=raw.match(/\[OPCJE:\s*([^\]]+)\]/);
+  const options=optMatch?optMatch[1].split("|").map(s=>s.trim()).filter(Boolean):[];
+  const done=raw.includes("[ONBOARDING_DONE]");
+  const text=raw.replace(/\[OPCJE:[^\]]*\]/g,"").replace("[ONBOARDING_DONE]","").trim();
+  return{text,options,done};
+}
+
+async function handleUserInput(text){
+  if(!text.trim()||chatBlocked)return;
+  chatBlocked=true;
+  document.getElementById("quickReplies").innerHTML="";
+  addUserBubble(text);
+  document.getElementById("chatInput").value="";
+
+  chatHistory.push({role:"user",content:text});
+  const exchanges=chatHistory.filter(m=>m.role==="user").length;
+  document.getElementById("progressBar").style.width=Math.min(90,5+exchanges*9)+"%";
+
+  showTyping();
+  const raw=await askGemini(SYSTEM,chatHistory);
+  hideTyping();
+
+  if(!raw||raw.startsWith("__")){
+    let errMsg="Przepraszam, mam chwilowy problem z połączeniem. Spróbuj jeszcze raz.";
+    if(raw&&raw.startsWith("__ERROR__:")){
+      const detail=raw.replace("__ERROR__:","");
+      if(detail.includes("API_KEY")||detail.includes("key")||detail.includes("403")){
+        errMsg="Błąd klucza API. Odśwież stronę i wpisz klucz ponownie.";
+        localStorage.removeItem("helm_gemini_key");
+      } else {
+        errMsg="Błąd Gemini: "+detail.substring(0,80);
+      }
+    } else if(raw==="__SAFETY__"){
+      errMsg="Gemini zablokował odpowiedź (filtr bezpieczeństwa). Spróbuj napisać inaczej.";
+      chatBlocked=false;return;
+    }
+    addAIBubble(errMsg);
+    chatBlocked=false;return;
+  }
+
+  const{text:aiText,options,done}=parseResponse(raw);
+  addAIBubble(aiText);
+  chatHistory.push({role:"assistant",content:raw});
+
+  if(done){
+    document.getElementById("progressBar").style.width="100%";
+    await sleep(400);
+    await generatePlan();
+  } else {
+    setQuickReplies(options);
+    chatBlocked=false;
+  }
+}
+
+async function generatePlan(){
+  const summary=chatHistory.map(m=>(m.role==="user"?"Użytkownik":"Helm")+": "+m.content).join("\n");
+  const sys=`Na podstawie rozmowy wygeneruj plan tygodniowy.
+Odpowiedz TYLKO JSON-em (zero markdown):
+{
+  "activities":[{
+    "name":"Nazwa",
+    "category":"work|health|hygiene|social|chores|leisure|food|transport",
+    "durationMin":60,"energyCost":40,"restAfterMin":15,"travelMin":0,
+    "frequency":"daily|weekdays|weekly|biweekly",
+    "preferredTime":"morning|afternoon|evening|flexible",
+    "preferredDays":["Mon"],"notes":"uwaga"
+  }],
+  "weekSummary":"Podsumowanie po polsku, 2 zdania"
+}
+Skala energii 0-100. Bazuj WYŁĄCZNIE na tym co powiedział użytkownik.`;
+
+  showTyping();
+  const raw=await askGemini(sys,[{role:"user",content:"Rozmowa:\n"+summary}]);
+  hideTyping();
+
+  let activities=null,weekSummary="Plan gotowy!";
+  try{
+    const parsed=JSON.parse(raw.replace(/```json|```/g,"").trim());
+    activities=parsed.activities;
+    weekSummary=parsed.weekSummary||weekSummary;
+  }catch(e){}
+
+  if(!activities) activities=defaultActivities();
+  state.days=distributeActivities(activities);
+
+  addAIBubble("Plan gotowy! 🎉\n\n"+weekSummary+"\n\nUłożyłem "+activities.length+" rodzajów aktywności. Pasek energii pokaże Ci ile siły zostaje po każdej czynności.");
+  await sleep(800);
+  addAIBubble("Gotowy żeby zobaczyć swój plan? 👇");
+
+  const showBtn=document.createElement("button");
+  showBtn.className="qr-btn";showBtn.textContent="Pokaż mój plan! 🗓️";
+  showBtn.onclick=()=>{ document.getElementById("quickReplies").innerHTML=""; showPlan(); };
+  document.getElementById("quickReplies").appendChild(showBtn);
+}
+
+function defaultActivities(){
+  return[
+    {name:"Poranna rutyna",category:"hygiene",durationMin:45,energyCost:10,restAfterMin:0,travelMin:0,frequency:"daily",preferredTime:"morning",preferredDays:[],notes:"Prysznic, ubieranie, zęby"},
+    {name:"Śniadanie",category:"food",durationMin:20,energyCost:5,restAfterMin:20,travelMin:0,frequency:"daily",preferredTime:"morning",preferredDays:[],notes:"Bufor trawienny"},
+    {name:"Obiad",category:"food",durationMin:30,energyCost:5,restAfterMin:20,travelMin:0,frequency:"daily",preferredTime:"afternoon",preferredDays:[],notes:""},
+    {name:"Sprzątanie",category:"chores",durationMin:60,energyCost:25,restAfterMin:10,travelMin:0,frequency:"weekly",preferredTime:"morning",preferredDays:["Sat"],notes:""},
+    {name:"Kolacja",category:"food",durationMin:25,energyCost:5,restAfterMin:30,travelMin:0,frequency:"daily",preferredTime:"evening",preferredDays:[],notes:""},
+    {name:"Czas wolny",category:"leisure",durationMin:60,energyCost:5,restAfterMin:0,travelMin:0,frequency:"daily",preferredTime:"evening",preferredDays:[],notes:"Relaks, hobby"},
+    {name:"Wieczorna rutyna",category:"hygiene",durationMin:25,energyCost:5,restAfterMin:0,travelMin:0,frequency:"daily",preferredTime:"evening",preferredDays:[],notes:"Mycie zębów, pielęgnacja"},
+  ];
+}
+
+function distributeActivities(activities){
+  const weekDays=getWeekDays();
+  const days={};
+  weekDays.forEach(d=>{days[d]=[];});
+  activities.forEach(act=>{
+    const pref=act.preferredDays||[];
+    let nums=[];
+    if(act.frequency==="daily")nums=[0,1,2,3,4,5,6];
+    else if(act.frequency==="weekdays")nums=[1,2,3,4,5];
+    else if(pref.length>0)nums=pref.map(d=>DAY_EN.indexOf(d)).filter(x=>x>=0);
+    else if(act.frequency==="weekly")nums=[6];
+    weekDays.forEach(ds=>{
+      const d=new Date(ds+"T00:00:00");
+      if(nums.includes(d.getDay()))
+        days[ds].push({...act,startTime:TIME_MAP[act.preferredTime]||"09:00",id:uid(),date:ds});
+    });
+  });
+  weekDays.forEach(ds=>{
+    days[ds].sort((a,b)=>toMin(a.startTime)-toMin(b.startTime));
+    let cursor=toMin(days[ds][0]?.startTime||"07:00");
+    days[ds].forEach((t,i)=>{
+      if(i>0){const prev=days[ds][i-1];cursor=Math.max(cursor,toMin(prev.startTime)+prev.durationMin+(prev.restAfterMin||0)+(prev.travelMin||0));}
+      t.startTime=fromMin(cursor);
+      cursor+=t.durationMin+(t.restAfterMin||0)+(t.travelMin||0);
+    });
+  });
+  return days;
+}
+
+// ══ PLAN VIEW ══
+function showPlan(){
+  showScreen("plan");
+  const weekDays=getWeekDays();
+  if(!state.selectedDay)state.selectedDay=weekDays[0];
+  renderDayTabs(weekDays);
+  renderDay(state.selectedDay);
+}
+
+function renderDayTabs(weekDays){
+  const c=document.getElementById("dayTabs");c.innerHTML="";
+  weekDays.forEach(ds=>{
+    const b=document.createElement("button");
+    b.className="day-tab"+(ds===state.selectedDay?" active":"");
+    b.textContent=dayShort(ds);
+    b.onclick=()=>selectDay(ds);
+    c.appendChild(b);
+  });
+}
+
+function selectDay(ds){
+  state.selectedDay=ds;
+  document.querySelectorAll(".day-tab").forEach((el,i)=>{
+    el.classList.toggle("active",getWeekDays()[i]===ds);
+  });
+  renderDay(ds);
+}
+
+function renderDay(ds){
+  document.getElementById("planTitle").textContent=dayFull(ds);
+  const tasks=state.days[ds]||[];
+  const rem=calcRem(tasks);
+  const col=energyColor(rem);
+  document.getElementById("energyValBig").textContent=rem+" / 100";
+  document.getElementById("energyValBig").style.color=col;
+  document.getElementById("energyFill").style.width=rem+"%";
+  document.getElementById("energyFill").style.background=col;
+  renderTimeline(tasks);
+}
+
+function renderTimeline(tasks){
+  const c=document.getElementById("timeline");
+  if(!tasks.length){
+    c.innerHTML=`<div class="empty-day"><div class="empty-icon">📅</div><div style="font-size:.88rem;line-height:1.6">Brak zaplanowanych czynności.<br>Naciśnij + żeby dodać pierwszą.</div></div>`;
+    return;
+  }
+  let html="",runE=100;
+  tasks.forEach((t,i)=>{
+    runE=Math.max(0,runE-(t.energyCost||0));
+    const isLow=runE<20,isWarn=runE<40;
+    const dotCls="tl-dot"+(isLow?" low":"");
+    const col=energyColor(runE);
+    html+=`<div class="tl-item">
+      <div class="tl-time">${t.startTime}</div>
+      <div class="tl-line">
+        <div class="${dotCls}"></div>
+        ${i<tasks.length-1?'<div class="tl-connector"></div>':""}
+      </div>
+      <div class="tl-card">
+        <div class="tl-card-top">
+          <div class="tl-name">${CAT_ICON[t.category]||"📌"} ${t.name}</div>
+          <div class="tl-dur">${t.durationMin}min</div>
+        </div>
+        <div class="tl-tags">
+          <span class="tag tag-e">−${t.energyCost} ⚡</span>
+          ${t.travelMin>0?`<span class="tag tag-t">🚗 ${t.travelMin}min</span>`:""}
+          ${t.restAfterMin>0?`<span class="tag tag-r">😮‍💨 +${t.restAfterMin}min</span>`:""}
+          ${isLow?`<span class="tag tag-w">⚠️ Mało energii</span>`:""}
+        </div>
+        <div class="mini-e-row">
+          <span class="mini-e-label">Energia po:</span>
+          <div class="mini-e-track"><div class="mini-e-fill" style="width:${runE}%;background:${col}"></div></div>
+          <span class="mini-e-val" style="color:${col}">${runE}</span>
+        </div>
+        ${t.notes?`<div class="tl-notes">${t.notes}</div>`:""}
+      </div>
+    </div>`;
+  });
+  c.innerHTML=html;
+}
+
+// ══ ADD TASK MODAL ══
+let modalDay=null;
+
+function openModal(ds){
+  modalDay=ds;
+  document.getElementById("fName").value="";
+  document.getElementById("fDur").value="60";
+  document.getElementById("fTime").value="10:00";
+  document.getElementById("fTravel").value="0";
+  document.getElementById("fRest").value="0";
+  document.getElementById("fEnergy").value="50";
+  document.getElementById("eLabel").textContent="50";
+  document.getElementById("aiResult").classList.remove("visible");
+  document.getElementById("btnCheck").style.display="block";
+  document.getElementById("btnAdd").style.display="none";
+  document.getElementById("btnRetry").style.display="none";
+  updateEnergyAfter();
+  document.getElementById("modalOverlay").classList.add("open");
+}
+
+function closeModal(){document.getElementById("modalOverlay").classList.remove("open");}
+
+function updateEnergyAfter(){
+  const tasks=state.days[modalDay]||[];
+  const rem=calcRem(tasks);
+  const e=parseInt(document.getElementById("fEnergy").value)||0;
+  const after=Math.max(0,rem-e);
+  const col=energyColor(after);
+  document.getElementById("eAfterLabel").textContent="Energia po: "+after+"/100";
+  document.getElementById("eAfterLabel").style.color=col;
+}
+
+document.getElementById("fEnergy").addEventListener("input",function(){
+  document.getElementById("eLabel").textContent=this.value;
+  updateEnergyAfter();
+});
+
+async function checkWithAI(){
+  const name=document.getElementById("fName").value.trim();
+  if(!name){alert("Podaj nazwę czynności");return;}
+  document.getElementById("btnCheck").textContent="🔍 Sprawdzam z AI...";
+  document.getElementById("btnCheck").disabled=true;
+
+  const tasks=state.days[modalDay]||[];
+  const rem=calcRem(tasks);
+  const existing=tasks.map(t=>`${t.startTime}: ${t.name} (${t.durationMin}min, energia:${t.energyCost}, odpoczynek:${t.restAfterMin}min)`).join("\n")||"Brak zadań";
+  const e=document.getElementById("fEnergy").value;
+  const sys=`Jesteś asystentem planowania dnia. Odpowiedz TYLKO JSON-em:
+{"feasible":true,"reason":"wyjaśnienie po polsku 1-2 zdania","warnings":[],"suggestion":"alternatywa jeśli niemożliwe"}`;
+  const msg=`Plan dnia (${dayShort(modalDay)}):
+${existing}
+Pozostała energia: ${rem}/100
+
+Nowe zadanie: ${name}, start: ${document.getElementById("fTime").value}, czas: ${document.getElementById("fDur").value}min, energia: ${e}, dojazd: ${document.getElementById("fTravel").value}min, odpoczynek po: ${document.getElementById("fRest").value}min, priorytet: ${document.getElementById("fPrio").value}
+
+Sprawdź: kolizje czasowe, wystarczającą energię, logikę (np. trening zaraz po jedzeniu, dwa treningi pod rząd).`;
+
+  const raw=await askGemini(sys,[{role:"user",content:msg}]);
+  let result={feasible:true,reason:"Brak odpowiedzi AI.",warnings:[]};
+  try{result=JSON.parse(raw.replace(/```json|```/g,"").trim());}catch(ex){}
+
+  const box=document.getElementById("aiResult");
+  box.classList.add("visible");
+  let html=`<div class="ai-result-row"><span style="font-size:1rem;flex-shrink:0">${result.feasible?"✅":"❌"}</span><div style="color:${result.feasible?"var(--text)":"var(--accent2)"}">${result.reason}</div></div>`;
+  if(result.warnings?.length)html+=`<div class="ai-warn">⚠️ ${result.warnings.join(" | ")}</div>`;
+  if(result.suggestion)html+=`<div class="ai-tip">💡 ${result.suggestion}</div>`;
+  box.innerHTML=html;
+
+  document.getElementById("btnCheck").style.display="none";
+  if(result.feasible){
+    document.getElementById("btnAdd").style.display="block";
+  } else {
+    document.getElementById("btnRetry").style.display="block";
+  }
+}
+
+function addTask(){
+  const ds=modalDay;
+  const task={
+    id:uid(),
+    name:document.getElementById("fName").value.trim(),
+    durationMin:parseInt(document.getElementById("fDur").value)||60,
+    startTime:document.getElementById("fTime").value,
+    energyCost:parseInt(document.getElementById("fEnergy").value)||0,
+    travelMin:parseInt(document.getElementById("fTravel").value)||0,
+    restAfterMin:parseInt(document.getElementById("fRest").value)||0,
+    category:document.getElementById("fCat").value,
+    priority:document.getElementById("fPrio").value,
+    date:ds,notes:""
+  };
+  if(!state.days[ds])state.days[ds]=[];
+  state.days[ds].push(task);
+  state.days[ds].sort((a,b)=>toMin(a.startTime)-toMin(b.startTime));
+  closeModal();
+  renderDay(ds);
+}
+
+// ══ EVENT LISTENERS ══
+// event listeners bound in bindEvents()
+
+// ══ SETTINGS ══
+function openSettings(){
+  document.getElementById("settingsKeyInput").value="";
+  document.getElementById("settingsOverlay").classList.add("open");
+}
+function closeSettings(){
+  document.getElementById("settingsOverlay").classList.remove("open");
+}
+document.getElementById("settingsSaveBtn").onclick=()=>{
+  const key=document.getElementById("settingsKeyInput").value.trim();
+  if(!key){alert("Wklej nowy klucz");return;}
+  setGeminiKey(key);
+  closeSettings();
+  alert("Klucz zapisany! Możesz teraz kontynuować rozmowę.");
+};
+document.getElementById("settingsCancelBtn").onclick=closeSettings;
+document.getElementById("settingsOverlay").addEventListener("click",e=>{
+  if(e.target===document.getElementById("settingsOverlay"))closeSettings();
+});
+// ══ INIT ══
+// Safely bind all event listeners after DOM is ready
+function bindEvents(){
+  const safe=(id,fn)=>{ const el=document.getElementById(id); if(el) el.onclick=fn; };
+  safe("sendBtn",()=>handleUserInput(document.getElementById("chatInput").value));
+  safe("fabBtn",()=>openModal(state.selectedDay));
+  safe("btnCancel",closeModal);
+  safe("btnCheck",checkWithAI);
+  safe("btnAdd",addTask);
+  safe("settingsBtn",openSettings);
+  safe("settingsBtnPlan",openSettings);
+  safe("settingsSaveBtn",()=>{
+    const key=document.getElementById("settingsKeyInput").value.trim();
+    if(!key){alert("Wklej nowy klucz");return;}
+    setGeminiKey(key);
+    closeSettings();
+    alert("Klucz zapisany!");
+  });
+  safe("settingsCancelBtn",closeSettings);
+  safe("apikeyBtn",()=>{
+    const key=document.getElementById("apikeyInput").value.trim();
+    if(!key){alert("Wklej klucz API");return;}
+    setGeminiKey(key);
+    startOnboarding();
+  });
+  safe("btnRetry",()=>{
+    document.getElementById("aiResult").classList.remove("visible");
+    document.getElementById("btnCheck").style.display="block";
+    document.getElementById("btnCheck").textContent="🔍 Sprawdź z AI czy mogę to zaplanować";
+    document.getElementById("btnCheck").disabled=false;
+    document.getElementById("btnRetry").style.display="none";
+  });
+
+  const chatInput=document.getElementById("chatInput");
+  if(chatInput){
+    chatInput.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleUserInput(e.target.value);}});
+    chatInput.addEventListener("input",function(){this.style.height="auto";this.style.height=Math.min(this.scrollHeight,100)+"px";});
+  }
+  const overlay=document.getElementById("modalOverlay");
+  if(overlay) overlay.addEventListener("click",e=>{if(e.target===overlay)closeModal();});
+  const sOverlay=document.getElementById("settingsOverlay");
+  if(sOverlay) sOverlay.addEventListener("click",e=>{if(e.target===sOverlay)closeSettings();});
+}
+
+drawSpokes("spokes");
+drawSpokes("spokes2");
+
+function startOnboarding(){
+  showScreen("onboarding");
+  setTimeout(()=>{
+    const greeting="Cześć! Jestem Helm — Twój racjonalny planer życia. ⚓\n\nPoznajmy się zanim ułożę Twój plan. Zacznijmy od podstaw.\n\nCzy pracujesz lub uczysz się?";
+    addAIBubble(greeting);
+    chatHistory=[{role:"assistant",content:greeting}];
+    setQuickReplies(["Pracuję","Uczę się","Pracuję i uczę się","Ani jedno, ani drugie"]);
+  },400);
+}
+
+// apikeyBtn bound in bindEvents()
+
+bindEvents();
+
+setTimeout(()=>{
+  if(getGeminiKey()){
+    startOnboarding();
+  } else {
+    showScreen("apikey");
+  }
+},1800);
+</script>
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙️ Zmień klucz API</div>
+    <label class="form-label">Aktualny klucz (ukryty)</label>
+    <input class="form-input" id="settingsKeyInput" type="password" placeholder="Wklej nowy klucz Gemini API...">
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:12px;line-height:1.5">
+      Pobierz klucz na <a href="https://aistudio.google.com" target="_blank" style="color:var(--accent)">aistudio.google.com</a><br>
+      → Menu ☰ → API keys → Create API key in new project
+    </div>
+    <button class="btn btn-primary" id="settingsSaveBtn">💾 Zapisz nowy klucz</button>
+    <button class="btn btn-ghost" id="settingsCancelBtn">Anuluj</button>
+  </div>
+</div>
+
+</body>
+</html>
